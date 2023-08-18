@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "starlette-https-redirect"
+version = "0.1.0"
+description = "HTTPS redirect middleware for Starlette/FastAPI with configurable path exceptions."
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+dependencies = ["starlette>=0.14"]
+
+[project.optional-dependencies]
+dev = ["black", "pytest", "httpx", "pytest-asyncio"]
+
+[project.urls]
+Homepage = "https://github.com/larsderidder/starlette-https-redirect"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+license-files = ["LICENSE"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.black]
+line-length = 120
