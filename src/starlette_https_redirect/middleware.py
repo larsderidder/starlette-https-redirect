@@ -21,12 +21,14 @@ class HTTPSRedirectMiddleware:
         self,
         app: ASGIApp,
         excepted_paths: Optional[Collection[str]] = None,
+        trust_x_forwarded_proto: bool = False,
     ) -> None:
         """
         Store the wrapped ASGI app and the paths that bypass redirects.
         """
         self.app = app
         self.excepted_paths = set(excepted_paths or ())
+        self.trust_x_forwarded_proto = trust_x_forwarded_proto
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         """
@@ -48,8 +50,18 @@ class HTTPSRedirectMiddleware:
         return (
             scope.get("type") == "http"
             and scope.get("scheme") == "http"
+            and not self._forwarded_as_https(scope)
             and scope.get("path") not in self.excepted_paths
         )
+
+    def _forwarded_as_https(self, scope: Scope) -> bool:
+        """
+        Return whether a trusted proxy marked the original request as HTTPS.
+        """
+        if not self.trust_x_forwarded_proto:
+            return False
+        headers = dict(scope.get("headers") or [])
+        return headers.get(b"x-forwarded-proto", b"").split(b",", 1)[0].strip().lower() == b"https"
 
     @staticmethod
     def _redirect_netloc(url: URL) -> str:

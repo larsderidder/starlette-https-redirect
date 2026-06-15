@@ -11,7 +11,7 @@ from starlette.routing import Route
 from starlette_https_redirect import HTTPSRedirectMiddleware
 
 
-def _make_app(excepted_paths=None) -> Starlette:
+def _make_app(excepted_paths=None, trust_x_forwarded_proto=False) -> Starlette:
     """
     Create a minimal Starlette app wrapped with the middleware.
     """
@@ -35,7 +35,11 @@ def _make_app(excepted_paths=None) -> Starlette:
             Route("/other", homepage),
         ],
     )
-    app.add_middleware(HTTPSRedirectMiddleware, excepted_paths=excepted_paths)
+    app.add_middleware(
+        HTTPSRedirectMiddleware,
+        excepted_paths=excepted_paths,
+        trust_x_forwarded_proto=trust_x_forwarded_proto,
+    )
     return app
 
 
@@ -60,6 +64,19 @@ async def test_https_request_is_not_redirected() -> None:
     app = _make_app()
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://testserver") as client:
         response = await client.get("/")
+
+    assert response.status_code == 200
+    assert response.text == "OK"
+
+
+@pytest.mark.asyncio
+async def test_trusted_forwarded_proto_https_is_not_redirected() -> None:
+    """
+    Pass requests through when a trusted proxy marked the original scheme as HTTPS.
+    """
+    app = _make_app(trust_x_forwarded_proto=True)
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://testserver") as client:
+        response = await client.get("/", headers={"x-forwarded-proto": "https"})
 
     assert response.status_code == 200
     assert response.text == "OK"
